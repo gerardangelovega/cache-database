@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const zcc = @import("compile_commands.zig");
-
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -41,33 +39,18 @@ pub fn build(b: *std.Build) !void {
         .name = "redstonedb_server",
         .root_module = b.createModule(.{
             .root_source_file = null,
-            .target           = target,
-            .optimize         = optimize,
-            .link_libc        = true,
-            .link_libcpp      = true,
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = true,
         }),
     });
-    server_exe.root_module.addCSourceFiles(.{
-        .files = server_source_files,
-        .flags = flags
-    });
-    server_exe.root_module.addCSourceFiles(.{
-        .files = shared_source_files,
-        .flags = flags
-    });
+    server_exe.root_module.addCSourceFiles(.{ .files = server_source_files, .flags = flags });
+    server_exe.root_module.addCSourceFiles(.{ .files = shared_source_files, .flags = flags });
     server_exe.root_module.addIncludePath(b.path("include/"));
     b.installArtifact(server_exe);
 
-    const client_exe = b.addExecutable(.{
-        .name = "redstonedb_client",
-        .root_module = b.createModule(.{
-            .root_source_file = null,
-            .target           = target,
-            .optimize         = optimize,
-            .link_libc        = true,
-            .link_libcpp      = true
-        })
-    });
+    const client_exe = b.addExecutable(.{ .name = "redstonedb_client", .root_module = b.createModule(.{ .root_source_file = null, .target = target, .optimize = optimize, .link_libc = true, .link_libcpp = true }) });
     client_exe.root_module.addCSourceFiles(.{
         .files = client_source_files,
         .flags = flags,
@@ -79,20 +62,6 @@ pub fn build(b: *std.Build) !void {
     client_exe.root_module.addIncludePath(b.path("include/"));
     b.installArtifact(client_exe);
 
-
-    var targets: std.ArrayList(*std.Build.Step.Compile) = .empty;
-    targets.append(b.allocator, server_exe) catch {
-        std.debug.panic("Error: Ran out of memory while appending to targets array list\n", .{});
-    };
-    targets.append(b.allocator, client_exe) catch {
-        std.debug.panic("Error: Ran out of memory while appending to targets array list\n", .{});
-    };
-
-    const targets_slice = targets.toOwnedSlice(b.allocator) catch {
-        std.debug.panic("Error: Ran out of memory converting targets array list into an owned slice\n", .{});
-    };
-    _ = zcc.createStep(b, "cdb", targets_slice);
-
     const run_server_exe = b.addRunArtifact(server_exe);
     run_server_exe.step.dependOn(b.getInstallStep());
 
@@ -101,7 +70,4 @@ pub fn build(b: *std.Build) !void {
 
     const run_client_exe = b.addRunArtifact(client_exe);
     run_client_exe.step.dependOn(b.getInstallStep());
-
-    const run_client_step = b.step("run-client", "Run the client");
-    run_client_step.dependOn(&run_client_exe.step);
 }
